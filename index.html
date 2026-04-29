@@ -62,27 +62,36 @@
         <button id="allInBtn">All-in</button>
         <button id="insuranceBtn">買保險</button>
         <button id="skipInsuranceBtn">不買保險</button>
+        <button id="adviceBtn" class="primary">建議</button>
       </div>
       <div class="hint" id="activeTableText">目前桌：Table 1</div>
     </section>
 
-    <section class="lower">
-      <article class="panel">
-        <h2>目前桌紀錄</h2>
-        <div class="log" id="log"></div>
-      </article>
-      <article class="panel analysis">
-        <h2>打完解析</h2>
-        <div id="analysis">
-          <p>完成一手後會顯示勝負、牌型、位置、彩池賠率、保險結果與下次建議。</p>
+    <section class="workspace">
+      <section class="lower">
+        <article class="panel">
+          <h2>目前桌紀錄</h2>
+          <div class="log" id="log"></div>
+        </article>
+        <article class="panel analysis">
+          <h2>打完解析</h2>
+          <div id="analysis">
+            <p>完成一手後會顯示勝負、牌型、位置、彩池賠率、保險結果與下次建議。</p>
+          </div>
+        </article>
+        <article class="panel review">
+          <h2>每 10 局檢討</h2>
+          <div id="review">
+            <p>累積打滿 10 手後，這裡會整理 VPIP、PFR、勝率、損益、保險使用與策略建議。</p>
+          </div>
+        </article>
+      </section>
+      <aside class="panel advice-panel">
+        <h2>即時建議</h2>
+        <div id="advice">
+          <p>不確定時點「建議」，我會依目前桌的手牌、位置、彩池與行動壓力給你下一步。</p>
         </div>
-      </article>
-      <article class="panel review">
-        <h2>每 10 局檢討</h2>
-        <div id="review">
-          <p>累積打滿 10 手後，這裡會整理 VPIP、PFR、勝率、損益、保險使用與策略建議。</p>
-        </div>
-      </article>
+      </aside>
     </section>
   </main>
 

@@ -46,12 +46,14 @@ const el = {
   log: $("log"),
   analysis: $("analysis"),
   review: $("review"),
+  advice: $("advice"),
   foldBtn: $("foldBtn"),
   checkCallBtn: $("checkCallBtn"),
   raiseBtn: $("raiseBtn"),
   allInBtn: $("allInBtn"),
   insuranceBtn: $("insuranceBtn"),
   skipInsuranceBtn: $("skipInsuranceBtn"),
+  adviceBtn: $("adviceBtn"),
   raiseAmount: $("raiseAmount")
 };
 
@@ -253,6 +255,7 @@ function updateButtons() {
   el.skipInsuranceBtn.disabled = !table?.awaitingInsurance;
   el.insuranceBtn.textContent = canOfferInsurance(table) ? `買保險 ${money(Math.ceil(table.pot * .05), table)}` : "買保險";
   el.skipInsuranceBtn.textContent = table?.awaitingInsurance ? "不買，直接開牌" : "不買保險";
+  el.adviceBtn.disabled = !table;
   if (!table) return;
   const waitingTables = app.tables.filter(tableNeedsHeroAction).map((t) => `Table ${t.id}`);
   if (waitingTables.length > 1) {
@@ -276,6 +279,84 @@ function tableNeedsHeroAction(table) {
   const hero = table.players.find((p) => p.hero);
   const heroTurn = table.pending && hero && table.players[table.currentIndex] === hero && !hero.folded && !hero.allIn;
   return !!heroTurn || table.awaitingInsurance;
+}
+
+function showAdvice() {
+  const table = activeTable();
+  if (!table) return;
+  el.advice.innerHTML = buildAdvice(table);
+}
+
+function buildAdvice(table) {
+  const hero = table.players.find((p) => p.hero);
+  const waiting = app.tables.filter(tableNeedsHeroAction).map((t) => t.id);
+  if (!hero) return "<p>找不到 Hero 座位，請重新整理頁面。</p>";
+  if (waiting.length > 1 && !waiting.includes(table.id)) {
+    return `<p><span class="badge">優先順序</span>先處理 Table ${waiting[0]}，那桌正在等你行動。</p>`;
+  }
+  if (table.awaitingInsurance) return buildInsuranceAdvice(table, hero);
+  if (table.street === "idle") return `<p><span class="badge">開局</span>Table ${table.id} 還沒發牌。可按「目前桌發牌」或「四桌同時開打」。</p>`;
+  if (table.street === "showdown" || !table.pending) return `<p><span class="badge">本手結束</span>這手已結束，先看打完解析；下一手重新觀察位置與有效籌碼。</p>`;
+
+  const heroTurn = table.players[table.currentIndex] === hero && !hero.folded && !hero.allIn;
+  if (!heroTurn) {
+    const next = table.players[table.currentIndex];
+    return `
+      <p><span class="badge">等待中</span>目前不是你行動。${next ? `${next.name} ${next.position} 正在處理。` : ""}</p>
+      <ul>
+        <li>先預想如果有人加注，你願意用這手牌投入多少。</li>
+        <li>多桌時優先看有大池、All-in、河牌決策的桌。</li>
+      </ul>
+    `;
+  }
+
+  const toCall = Math.max(0, table.currentBet - hero.bet);
+  const potAfterCall = table.pot + toCall;
+  const potOdds = toCall > 0 ? toCall / Math.max(1, potAfterCall) : 0;
+  const strength = estimateStrength(table, hero);
+  const pre = preflopScore(hero.cards);
+  const handText = hero.cards.map(cardText).join(" ");
+  const position = hero.position;
+  const raiseTarget = Math.min(hero.bet + hero.stack, Math.max(table.currentBet + table.lastRaise, table.currentBet + Math.ceil(table.pot * .65)));
+  const action = recommendAction(table, hero, strength, pre, potOdds, toCall);
+  return `
+    <p><span class="badge">${action.label}</span>${action.main}</p>
+    <ul>
+      <li>手牌：${handText}；位置：${position}；階段：${streetName(table.street)}。</li>
+      <li>目前彩池 ${money(table.pot, table)}，需跟 ${money(toCall, table)}${toCall ? `，底池賠率約 ${(potOdds * 100).toFixed(1)}%。` : "。"}</li>
+      <li>估計牌力 ${(strength * 100).toFixed(0)} / 100；翻前基礎 ${(pre * 100).toFixed(0)} / 100。</li>
+      <li>${action.detail}</li>
+      <li>若要加注，建議加到約 ${money(raiseTarget, table)}，除非你想直接 All-in 施壓。</li>
+    </ul>
+  `;
+}
+
+function recommendAction(table, hero, strength, pre, potOdds, toCall) {
+  const late = ["CO", "BTN", "SB"].includes(hero.position);
+  const early = ["UTG", "UTG+1", "MP"].includes(hero.position);
+  const made = table.board.length ? evaluateBest([...hero.cards, ...table.board]) : null;
+  if (toCall === 0) {
+    if (strength >= .58 || (late && pre >= .42)) return { label: "建議下注 / 加注", main: "目前不用付錢看下一張，若牌力或位置不錯，可以主動施壓。", detail: "後位沒人表態時，用 50% 到 70% 彩池下注可以拿棄牌率。" };
+    return { label: "建議過牌", main: "目前不需要投入籌碼，過牌看下一張比較穩。", detail: "弱牌或邊緣聽牌不用硬把彩池做大。" };
+  }
+  if (strength < potOdds + .08 && pre < .36 && early) return { label: "建議棄牌", main: "牌力與位置都不夠，面對下注不值得繼續投入。", detail: "多桌時這類邊緣跟注最容易慢慢漏錢。" };
+  if (strength >= .72 || made?.category >= 4) return { label: "建議加注", main: "你的牌力夠強，可以加注拿價值或逼聽牌付費。", detail: "強成牌不要只跟注，除非你判斷對手會繼續 bluff。" };
+  if (strength >= potOdds + .12 || (late && pre >= .48)) return { label: "建議跟注", main: "跟注價格可以接受，保留位置與實現勝率。", detail: "若後面還有人未行動，跟注範圍要再收緊一點。" };
+  return { label: "偏向棄牌", main: "這個價格偏貴，牌力沒有明顯超過底池賠率。", detail: "除非你有明確讀牌或強聽牌，否則棄牌較乾淨。" };
+}
+
+function buildInsuranceAdvice(table, hero) {
+  const premium = Math.ceil(table.pot * .05);
+  const payout = Math.floor(table.pot * .45);
+  const boardLeft = 5 - table.board.length;
+  return `
+    <p><span class="badge">保險建議</span>保險主要是降低波動，不是提高長期獲利。</p>
+    <ul>
+      <li>保費 ${money(premium, table)}；若輸掉賠付 ${money(payout, table)}；剩餘 ${boardLeft} 張公共牌未發。</li>
+      <li>若你 bankroll 壓力大、主池很大，可以買小額保險。</li>
+      <li>若目標是長期 EV，通常偏向不買，直接開牌。</li>
+    </ul>
+  `;
 }
 
 function startHand(table = activeTable()) {
@@ -802,5 +883,6 @@ el.raiseBtn.addEventListener("click", () => heroAction("raise"));
 el.allInBtn.addEventListener("click", () => heroAction("allin"));
 el.insuranceBtn.addEventListener("click", () => buyInsurance(activeTable()));
 el.skipInsuranceBtn.addEventListener("click", () => skipInsurance(activeTable()));
+el.adviceBtn.addEventListener("click", showAdvice);
 
 addTable();

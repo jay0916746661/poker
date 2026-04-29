@@ -433,11 +433,17 @@ select {
   justify-content: space-between;
 }
 
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 12px;
+  margin-top: 12px;
+}
+
 .lower {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 12px;
-  margin-top: 12px;
 }
 
 .panel {
@@ -468,19 +474,29 @@ select {
 }
 
 .analysis,
-.review {
+.review,
+.advice-panel {
   color: #dbe2ea;
 }
 
 .analysis ul,
-.review ul {
+.review ul,
+.advice-panel ul {
   margin: 8px 0 0;
   padding-left: 18px;
 }
 
 .analysis li,
-.review li {
+.review li,
+.advice-panel li {
   margin: 6px 0;
+}
+
+.advice-panel {
+  position: sticky;
+  top: 12px;
+  align-self: start;
+  min-height: 236px;
 }
 
 .badge {
@@ -502,6 +518,7 @@ select {
   }
 
   .tables-grid,
+  .workspace,
   .lower {
     grid-template-columns: 1fr;
   }
