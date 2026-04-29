@@ -198,6 +198,16 @@ select {
   box-shadow: 0 0 0 2px rgba(240, 184, 79, .2);
 }
 
+.table-card.needs-action {
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px rgba(85, 214, 140, .24), 0 0 24px rgba(85, 214, 140, .12);
+}
+
+.table-card.selected.needs-action {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(240, 184, 79, .28), 0 0 28px rgba(85, 214, 140, .14);
+}
+
 .table-head {
   display: flex;
   justify-content: space-between;

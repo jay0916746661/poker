@@ -39,6 +39,7 @@ const el = {
   cashRate: $("cashRate"),
   autoInsurance: $("autoInsurance"),
   addTableBtn: $("addTableBtn"),
+  allTablesBtn: $("allTablesBtn"),
   newHandBtn: $("newHandBtn"),
   statusText: $("statusText"),
   activeTableText: $("activeTableText"),
@@ -150,6 +151,8 @@ function renderCard(card, hidden = false) {
 }
 
 function render() {
+  const urgent = app.tables.find(tableNeedsHeroAction);
+  if (urgent && !tableNeedsHeroAction(activeTable())) app.activeTableId = urgent.id;
   el.tablesGrid.innerHTML = app.tables.map(renderTable).join("");
   document.querySelectorAll(".table-card").forEach((node) => {
     node.addEventListener("click", () => {
@@ -164,12 +167,13 @@ function render() {
 
 function renderTable(table) {
   const isActive = table.id === app.activeTableId;
+  const needsAction = tableNeedsHeroAction(table);
   const hero = table.players.find((p) => p.hero);
   const heroDelta = hero ? hero.stack - 1500 : 0;
   const board = Array.from({ length: 5 }, (_, i) => table.board[i] ? renderCard(table.board[i]) : `<div class="card back"></div>`).join("");
   const seats = table.players.map((p, idx) => renderSeat(table, p, idx)).join("");
   return `
-    <article class="table-card${isActive ? " selected" : ""}" data-table-id="${table.id}">
+    <article class="table-card${isActive ? " selected" : ""}${needsAction ? " needs-action" : ""}" data-table-id="${table.id}">
       <header class="table-head">
         <div>
           <strong>Table ${table.id}</strong>
@@ -221,6 +225,7 @@ function renderLobby() {
   el.tableCount.textContent = `${app.tables.length} / 4`;
   el.displayModeText.textContent = { chips: "籌碼", bb: "BB 數", cash: "現金" }[app.displayMode];
   el.addTableBtn.disabled = app.tables.length >= 4;
+  el.allTablesBtn.disabled = app.tables.every((t) => t.pending || t.awaitingInsurance) && app.tables.length >= 4;
   const table = activeTable();
   el.activeTableText.textContent = table ? `目前桌：Table ${table.id}` : "目前桌：無";
 }
@@ -249,7 +254,10 @@ function updateButtons() {
   el.insuranceBtn.textContent = canOfferInsurance(table) ? `買保險 ${money(Math.ceil(table.pot * .05), table)}` : "買保險";
   el.skipInsuranceBtn.textContent = table?.awaitingInsurance ? "不買，直接開牌" : "不買保險";
   if (!table) return;
-  if (table.awaitingInsurance) {
+  const waitingTables = app.tables.filter(tableNeedsHeroAction).map((t) => `Table ${t.id}`);
+  if (waitingTables.length > 1) {
+    el.statusText.textContent = `需要行動：${waitingTables.join("、")}。`;
+  } else if (table.awaitingInsurance) {
     el.statusText.textContent = `Table ${table.id}: Hero 已 All-in，可選擇買保險或直接開牌。`;
   } else if (table.thinkingIndex >= 0) {
     const p = table.players[table.thinkingIndex];
@@ -261,6 +269,13 @@ function updateButtons() {
   } else {
     el.statusText.textContent = `Table ${table.id}: 可以開始新一手。`;
   }
+}
+
+function tableNeedsHeroAction(table) {
+  if (!table) return false;
+  const hero = table.players.find((p) => p.hero);
+  const heroTurn = table.pending && hero && table.players[table.currentIndex] === hero && !hero.folded && !hero.allIn;
+  return !!heroTurn || table.awaitingInsurance;
 }
 
 function startHand(table = activeTable()) {
@@ -757,16 +772,27 @@ function compareHands(a, b) {
   return 0;
 }
 
-function addTable() {
+function addTable(select = true, renderAfter = true) {
   if (app.tables.length >= 4) return;
   const table = createTable(app.nextTableId++);
   assignPositions(table);
   app.tables.push(table);
-  app.activeTableId = table.id;
+  if (select) app.activeTableId = table.id;
+  if (renderAfter) render();
+}
+
+function startAllTables() {
+  while (app.tables.length < 4) addTable(false, false);
+  const firstIdle = app.tables.find((t) => !t.pending && !t.awaitingInsurance);
+  if (firstIdle) app.activeTableId = firstIdle.id;
+  app.tables.forEach((table) => {
+    if (!table.pending && !table.awaitingInsurance) startHand(table);
+  });
   render();
 }
 
-el.addTableBtn.addEventListener("click", addTable);
+el.addTableBtn.addEventListener("click", () => addTable());
+el.allTablesBtn.addEventListener("click", startAllTables);
 el.newHandBtn.addEventListener("click", () => startHand(activeTable()));
 el.displayMode.addEventListener("change", () => { app.displayMode = el.displayMode.value; render(); });
 el.cashRate.addEventListener("change", () => { app.cashRate = Number(el.cashRate.value); render(); });
