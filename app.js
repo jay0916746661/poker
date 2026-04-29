@@ -189,6 +189,7 @@ function renderTable(table) {
       <div class="felt">
         <div class="board-panel">
           <div class="label">Pot ${money(table.pot, table)}</div>
+          ${renderPotChips(table)}
           <div class="cards board">${board}</div>
           ${table.insurance ? `<div class="insurance-pill">保險 ${money(table.insurance.premium, table)}</div>` : ""}
         </div>
@@ -211,14 +212,52 @@ function renderSeat(table, p, idx) {
   ].filter(Boolean).join(" ");
   return `
     <div class="${cls}">
+      ${p.position === "BTN" ? '<div class="dealer-button">D</div>' : ""}
+      ${p.position === "SB" || p.position === "BB" ? `<div class="blind-button">${p.position}</div>` : ""}
       <div class="seat-head"><span class="name">${p.name}</span><span class="pos">${p.position || "--"}</span></div>
       <div class="stackline">${money(p.stack, table)} · 投入 ${money(p.committed, table)}</div>
+      ${renderChipStack(p.stack)}
       <div class="betline">本輪 <strong>${money(p.bet, table)}</strong>${p.allIn ? " · All-in" : ""}</div>
+      ${p.bet > 0 ? `<div class="bet-chips">${renderChipStack(p.bet, "bet")}</div>` : ""}
       <div class="cards">${p.cards.map((c) => renderCard(c, !showCards)).join("")}</div>
       <div class="tell">${p.folded ? "已棄牌" : p.lastAction || p.style}</div>
       ${idx === table.thinkingIndex ? '<div class="thinking-dots"><span></span><span></span><span></span></div>' : ""}
     </div>
   `;
+}
+
+function renderPotChips(table) {
+  if (table.pot <= 0) return '<div class="pot-chips empty-pot">No pot</div>';
+  return `<div class="pot-chips">${renderChipStack(table.pot, "pot")}</div>`;
+}
+
+function renderChipStack(amount, variant = "stack") {
+  const chips = chipBreakdown(amount);
+  return `
+    <div class="chip-stack ${variant}" aria-label="籌碼 ${amount}">
+      ${chips.map((chip, idx) => `<span class="chip chip-${chip.color}" style="--col:${idx % 7}; --row:${Math.floor(idx / 7)}"></span>`).join("")}
+    </div>
+  `;
+}
+
+function chipBreakdown(amount) {
+  if (amount <= 0) return [];
+  const values = [
+    { value: 500, color: "black" },
+    { value: 100, color: "green" },
+    { value: 25, color: "blue" },
+    { value: 5, color: "red" },
+    { value: 1, color: "white" }
+  ];
+  const chips = [];
+  let remaining = Math.max(1, Math.round(amount));
+  for (const item of values) {
+    const count = Math.min(5, Math.floor(remaining / item.value));
+    for (let i = 0; i < count; i++) chips.push({ color: item.color });
+    remaining -= count * item.value;
+  }
+  if (!chips.length) chips.push({ color: "white" });
+  return chips.slice(0, 14);
 }
 
 function renderLobby() {

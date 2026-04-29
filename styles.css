@@ -241,9 +241,10 @@ select {
   border-radius: 120px;
   margin: 10px;
   background:
+    radial-gradient(circle at 50% 52%, rgba(255,255,255,.08), transparent 18%),
     repeating-linear-gradient(90deg, rgba(255,255,255,.03), rgba(255,255,255,.03) 1px, transparent 1px, transparent 10px),
     radial-gradient(ellipse at center, #16855f, var(--felt) 54%, var(--felt-dark));
-  box-shadow: inset 0 0 48px rgba(0,0,0,.45);
+  box-shadow: inset 0 0 48px rgba(0,0,0,.45), inset 0 0 0 8px rgba(255,255,255,.035);
   overflow: hidden;
 }
 
@@ -310,16 +311,104 @@ select {
   font-weight: 800;
 }
 
+.pot-chips {
+  min-height: 28px;
+  display: grid;
+  place-items: center;
+}
+
+.empty-pot {
+  color: rgba(255,255,255,.42);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.chip-stack {
+  position: relative;
+  width: 76px;
+  height: 24px;
+  display: inline-block;
+}
+
+.chip-stack.bet {
+  width: 58px;
+  height: 18px;
+  transform: scale(.82);
+  transform-origin: left center;
+}
+
+.chip-stack.pot {
+  width: 110px;
+  height: 34px;
+  transform: scale(1.08);
+}
+
+.chip {
+  position: absolute;
+  left: calc(var(--col) * 9px);
+  bottom: calc(var(--row) * 8px);
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px dashed rgba(255,255,255,.72);
+  box-shadow: inset 0 0 0 4px rgba(0,0,0,.13), 0 3px 4px rgba(0,0,0,.38);
+}
+
+.chip::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: inherit;
+  background: rgba(255,255,255,.78);
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,.12);
+}
+
+.chip-white { background: #f1eee5; }
+.chip-red { background: #d83b3b; }
+.chip-blue { background: #246bd1; }
+.chip-green { background: #15925c; }
+.chip-black { background: #20242a; }
+
 .seat {
   position: absolute;
   width: 126px;
-  min-height: 98px;
+  min-height: 124px;
   border-radius: 7px;
   padding: 7px;
   background: rgba(24, 29, 34, .9);
   border: 1px solid rgba(255,255,255,.18);
   box-shadow: 0 10px 24px rgba(0,0,0,.25);
   z-index: 3;
+}
+
+.dealer-button,
+.blind-button {
+  position: absolute;
+  top: -11px;
+  display: grid;
+  place-items: center;
+  height: 24px;
+  min-width: 24px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  box-shadow: 0 4px 10px rgba(0,0,0,.35);
+}
+
+.dealer-button {
+  right: -9px;
+  color: #171717;
+  background: #f7f1e8;
+  border: 2px solid #d7cdbd;
+}
+
+.blind-button {
+  left: -10px;
+  padding: 0 7px;
+  color: #101419;
+  background: var(--gold);
+  border: 2px solid #ffd479;
 }
 
 .seat.active {
@@ -381,6 +470,18 @@ select {
   color: var(--muted);
   font-size: 11px;
   line-height: 1.25;
+}
+
+.seat > .chip-stack {
+  margin-top: 5px;
+}
+
+.bet-chips {
+  position: absolute;
+  left: 50%;
+  bottom: -16px;
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
 .betline strong {
