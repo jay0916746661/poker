@@ -260,12 +260,12 @@ select {
 .board-panel {
   position: absolute;
   left: 50%;
-  top: 50%;
+  top: 52%;
   transform: translate(-50%, -50%);
   display: grid;
   justify-items: center;
-  gap: 8px;
-  z-index: 2;
+  gap: 10px;
+  z-index: 5;
 }
 
 .cards {
@@ -372,10 +372,10 @@ select {
 
 .seat {
   position: absolute;
-  width: 126px;
-  min-height: 124px;
+  width: 112px;
+  min-height: 118px;
   border-radius: 7px;
-  padding: 7px;
+  padding: 6px;
   background: rgba(24, 29, 34, .9);
   border: 1px solid rgba(255,255,255,.18);
   box-shadow: 0 10px 24px rgba(0,0,0,.25);
@@ -431,15 +431,15 @@ select {
   background: rgba(36, 45, 50, .97);
 }
 
-.seat-0 { left: 2%; top: 30%; }
-.seat-1 { left: 10%; top: 8%; }
-.seat-2 { left: 50%; top: 2%; transform: translateX(-50%); }
-.seat-3 { right: 10%; top: 8%; }
-.seat-4 { right: 2%; top: 30%; }
-.seat-5 { right: 7%; bottom: 14%; }
-.seat-6 { right: 27%; bottom: 2%; }
-.seat-7 { left: 27%; bottom: 2%; }
-.seat-8 { left: 7%; bottom: 14%; }
+.seat-0 { left: 1%; top: 31%; }
+.seat-1 { left: 8%; top: 6%; }
+.seat-2 { left: 50%; top: 1%; transform: translateX(-50%); }
+.seat-3 { right: 8%; top: 6%; }
+.seat-4 { right: 1%; top: 31%; }
+.seat-5 { right: 5%; bottom: 12%; }
+.seat-6 { right: 25%; bottom: 1%; }
+.seat-7 { left: 25%; bottom: 1%; }
+.seat-8 { left: 5%; bottom: 12%; }
 
 .seat-head {
   display: flex;
@@ -451,6 +451,7 @@ select {
 .name {
   font-weight: 800;
   white-space: nowrap;
+  font-size: 12px;
 }
 
 .pos {
@@ -468,20 +469,23 @@ select {
 .tell {
   margin-top: 4px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1.25;
 }
 
 .seat > .chip-stack {
-  margin-top: 5px;
+  margin-top: 4px;
+  transform: scale(.84);
+  transform-origin: left top;
 }
 
 .bet-chips {
   position: absolute;
   left: 50%;
-  bottom: -16px;
+  bottom: -11px;
   transform: translateX(-50%);
   pointer-events: none;
+  z-index: 1;
 }
 
 .betline strong {
@@ -490,15 +494,15 @@ select {
 
 .seat .cards {
   justify-content: flex-start;
-  min-height: 38px;
-  margin-top: 5px;
+  min-height: 34px;
+  margin-top: 4px;
 }
 
 .seat .card {
-  width: 28px;
-  height: 38px;
+  width: 24px;
+  height: 34px;
   border-radius: 5px;
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .thinking-dots {
@@ -644,26 +648,27 @@ select {
   }
 
   .felt {
-    min-height: 650px;
+    min-height: 690px;
     border-width: 8px;
     border-radius: 32px;
   }
 
   .seat {
-    width: 118px;
+    width: 108px;
   }
 
   .seat-0 { left: 3%; top: 4%; }
   .seat-1 { left: 50%; top: 4%; transform: translateX(-50%); }
   .seat-2 { right: 3%; top: 4%; left: auto; transform: none; }
-  .seat-3 { left: 3%; top: 24%; right: auto; }
-  .seat-4 { right: 3%; top: 24%; }
-  .seat-5 { right: 3%; bottom: 25%; }
+  .seat-3 { left: 2%; top: 25%; right: auto; }
+  .seat-4 { right: 2%; top: 25%; }
+  .seat-5 { right: 2%; bottom: 25%; }
   .seat-6 { right: 3%; bottom: 4%; }
   .seat-7 { left: 50%; bottom: 4%; transform: translateX(-50%); }
-  .seat-8 { left: 3%; bottom: 4%; }
+  .seat-8 { left: 2%; bottom: 25%; }
 
   .board-panel {
-    width: min(330px, calc(100% - 20px));
+    width: min(286px, calc(100% - 18px));
+    top: 51%;
   }
 }

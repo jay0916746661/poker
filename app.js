@@ -81,7 +81,8 @@ function createTable(id) {
     analysisHtml: "<p>完成一手後會顯示勝負、牌型、位置、彩池賠率、保險結果與下次建議。</p>",
     insurance: null,
     awaitingInsurance: false,
-    heroExtraCost: 0
+    heroExtraCost: 0,
+    autoNextTimer: null
   };
 }
 
@@ -400,6 +401,10 @@ function buildInsuranceAdvice(table, hero) {
 
 function startHand(table = activeTable()) {
   if (!table || table.pending) return;
+  if (table.autoNextTimer) {
+    clearTimeout(table.autoNextTimer);
+    table.autoNextTimer = null;
+  }
   table.players.forEach((p) => {
     if (p.stack <= 0) p.stack = 1500;
     p.cards = [];
@@ -610,6 +615,16 @@ function completeHand(table, winners, wonByFold, contenders, heroStartStack) {
   table.dealer = (table.dealer + 1) % table.players.length;
   if (app.completedHands.length % 10 === 0) createTenHandReview();
   render();
+  scheduleNextHand(table);
+}
+
+function scheduleNextHand(table) {
+  if (table.awaitingInsurance) return;
+  if (table.autoNextTimer) clearTimeout(table.autoNextTimer);
+  table.autoNextTimer = setTimeout(() => {
+    table.autoNextTimer = null;
+    if (!table.pending && !table.awaitingInsurance && table.street === "showdown") startHand(table);
+  }, 1800);
 }
 
 function continueBots(table) {
@@ -763,16 +778,22 @@ function createTenHandReview() {
   const wins = hands.filter((h) => h.won).length;
   const showdowns = hands.filter((h) => h.wentShowdown).length;
   const insuranceCount = hands.filter((h) => h.insurance).length;
-  const loose = vpip >= 5 ? "VPIP 偏高，多桌時建議少玩前位弱牌。" : "入池頻率偏穩，可以在 CO / BTN 多偷盲。";
-  const passive = pfr <= 1 && vpip >= 3 ? "PFR 偏低，跟注太多會讓你被動看牌。" : "主動加注頻率合理，繼續用位置施壓。";
-  const insuranceAdvice = insuranceCount >= 3 ? "保險買得偏多，除非主池很大且波動壓力明顯，否則保費會吃掉長期 EV。" : "保險使用克制，適合把它當作波動管理而不是獲利工具。";
+  const good = [];
+  const bad = [];
+  if (vpip <= 4) good.push("入池頻率控制得不錯，沒有因多桌而亂跟牌。");
+  else bad.push("VPIP 偏高，前位與邊緣牌投入過多。");
+  if (pfr >= 2) good.push("有維持主動加注，節奏不會太被動。");
+  else bad.push("PFR 偏低，跟注太多會讓你很難在後續街拿主動權。");
+  if (profit >= 0) good.push("最近 10 手整體是正收益，執行面穩定。");
+  else bad.push("最近 10 手是負收益，要多檢查鬆跟與弱牌硬撐的 spots。");
+  if (insuranceCount >= 3) bad.push("保險買得偏多，長期會吃掉 EV。");
+  else good.push("保險使用節制，波動管理有守住。");
   el.review.innerHTML = `
     <p><span class="badge">第 ${app.reviewNo} 次檢討</span>最近 10 手損益 ${profit >= 0 ? "+" : ""}${money(profit)}，勝率 ${wins}/10。</p>
     <ul>
       <li>VPIP：${vpip}/10；PFR：${pfr}/10；攤牌：${showdowns}/10。</li>
-      <li>${loose}</li>
-      <li>${passive}</li>
-      <li>${insuranceAdvice}</li>
+      <li><strong>打得好：</strong>${good.join(" ")}</li>
+      <li><strong>要修正：</strong>${bad.length ? bad.join(" ") : "這 10 手沒有明顯漏水點，繼續維持。"} </li>
       <li>多桌建議：先照顧有 All-in、河牌決策、或面對大注的桌；小盲/大盲防守不要因為忙而自動跟太寬。</li>
     </ul>
   `;
