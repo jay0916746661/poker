@@ -217,14 +217,14 @@ select {
   gap: 10px;
   align-items: center;
   padding: 8px 14px;
-  background: linear-gradient(180deg, #3a3836, #2c2b2a);
+  background: linear-gradient(180deg, #343433, #262826);
   border-bottom: 1px solid var(--line);
 }
 
 .table-head strong {
   display: block;
-  font-size: 14px;
-  letter-spacing: .02em;
+  font-size: 13px;
+  letter-spacing: .01em;
 }
 
 .table-head span {
@@ -235,7 +235,7 @@ select {
 .table-stats {
   display: grid;
   justify-items: end;
-  gap: 3px;
+  gap: 2px;
 }
 
 .felt {
@@ -321,12 +321,16 @@ select {
   left: 50%;
   top: 58%;
   transform: translateX(-50%);
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 800;
-  color: rgba(223, 244, 236, .3);
+  color: rgba(223, 244, 236, .16);
   letter-spacing: .03em;
   z-index: 1;
   pointer-events: none;
+}
+
+.active-brand {
+  color: rgba(223, 244, 236, .22);
 }
 
 .cards {
@@ -376,6 +380,7 @@ select {
   min-height: 28px;
   display: grid;
   place-items: center;
+  opacity: .9;
 }
 
 .empty-pot {
@@ -437,7 +442,7 @@ select {
   min-height: 118px;
   border-radius: 7px;
   padding: 6px;
-  background: linear-gradient(180deg, rgba(35, 39, 48, .96), rgba(24, 29, 34, .93));
+  background: linear-gradient(180deg, rgba(31, 35, 43, .94), rgba(22, 26, 33, .9));
   border: 1px solid rgba(255,255,255,.18);
   box-shadow: 0 10px 24px rgba(0,0,0,.25);
   z-index: 3;
@@ -512,7 +517,7 @@ select {
 .name {
   font-weight: 800;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .pos {
@@ -529,8 +534,8 @@ select {
 .betline,
 .tell {
   margin-top: 4px;
-  color: var(--muted);
-  font-size: 10px;
+  color: #9da8b5;
+  font-size: 9px;
   line-height: 1.25;
 }
 
@@ -606,11 +611,23 @@ select {
   gap: 8px;
   padding: 8px 10px 10px;
   border-top: 1px solid rgba(255,255,255,.06);
-  background: linear-gradient(180deg, rgba(23, 25, 30, .98), rgba(14, 16, 20, .98));
+  background: linear-gradient(180deg, rgba(19, 21, 26, .98), rgba(12, 14, 18, .99));
 }
 
 .table-footer.ready {
   box-shadow: inset 0 1px 0 rgba(85, 214, 140, .28);
+}
+
+.table-footer-passive {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.table-footer-passive.ready .footer-pill {
+  background: rgba(48, 58, 41, .72);
+  color: #eedf92;
 }
 
 .table-footer-info,
@@ -632,9 +649,9 @@ select {
   min-height: 28px;
   padding: 0 10px;
   border-radius: 8px;
-  background: rgba(48, 58, 41, .72);
-  border: 1px solid rgba(240,184,79,.22);
-  color: #eedf92;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.08);
+  color: #cfd6de;
   font-size: 12px;
   font-weight: 700;
 }
@@ -648,15 +665,15 @@ select {
 
 .mini-btn {
   border: 1px solid rgba(255,255,255,.08);
-  background: rgba(255,255,255,.04);
-  color: #c9d0d8;
+  background: rgba(255,255,255,.035);
+  color: #bcc5ce;
   padding: 0 10px;
 }
 
 .action-btn {
-  min-width: 74px;
+  min-width: 68px;
   border: 1px solid rgba(255,255,255,.08);
-  background: #232933;
+  background: #20262e;
   color: #f0f3f8;
 }
 
@@ -685,7 +702,7 @@ select {
   background: rgba(255,255,255,.04);
   border: 1px solid rgba(255,255,255,.08);
   color: #b8c0ca;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .footer-raise input {
@@ -751,6 +768,15 @@ select {
   top: 12px;
   align-self: start;
   min-height: 236px;
+}
+
+.table-card:not(.selected) .table-side,
+.table-card:not(.selected) .insurance-pill {
+  display: none;
+}
+
+.table-card:not(.selected) .felt {
+  margin-bottom: 2px;
 }
 
 .badge {

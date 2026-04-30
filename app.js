@@ -193,20 +193,17 @@ function renderTable(table) {
     <article class="table-card${isActive ? " selected" : ""}${needsAction ? " needs-action" : ""}" data-table-id="${table.id}">
       <header class="table-head">
         <div>
-          <strong>HL81${table.id}${table.handNo} · ${money(table.smallBlind, table)}/${money(table.bigBlind, table)} · 無限注德州撲克</strong>
+          <strong>Table ${table.id}</strong>
           <span>${streetName(table.street)} · Hand ${table.handNo}</span>
         </div>
         <div class="table-stats">
-          <span>底池 ${money(table.pot, table)}</span>
+          <span>${money(table.smallBlind, table)}/${money(table.bigBlind, table)}</span>
           <span>Hero ${heroDelta >= 0 ? "+" : ""}${money(heroDelta, table)}</span>
         </div>
       </header>
       <div class="felt">
-        <div class="table-side left">
-          <div class="side-chip"></div>
-          <div class="side-menu"></div>
-        </div>
-        <div class="table-brand">TRAINING POKER</div>
+        ${isActive ? '<div class="table-side left"><div class="side-chip"></div><div class="side-menu"></div></div>' : ""}
+        <div class="table-brand${isActive ? " active-brand" : ""}">TRAINING POKER</div>
         <div class="board-panel">
           <div class="label">底池 ${money(table.pot, table)}</div>
           ${renderPotChips(table)}
@@ -216,7 +213,7 @@ function renderTable(table) {
         ${seats}
       </div>
       <footer class="table-footer${needsAction ? " ready" : ""}">
-        ${renderTableFooter(table)}
+        ${isActive ? renderTableFooter(table) : renderPassiveFooter(table)}
       </footer>
     </article>
   `;
@@ -233,13 +230,14 @@ function renderSeat(table, p, idx) {
     p.folded ? "folded" : "",
     p.winner ? "winner" : ""
   ].filter(Boolean).join(" ");
+  const showStackChips = p.hero || idx === table.currentIndex;
   return `
     <div class="${cls}">
       ${p.position === "BTN" ? '<div class="dealer-button">D</div>' : ""}
       ${p.position === "SB" || p.position === "BB" ? `<div class="blind-button">${p.position}</div>` : ""}
       <div class="seat-head"><span class="name">${p.name}</span><span class="pos">${p.position || "--"}</span></div>
       <div class="stackline">${money(p.stack, table)} · 投入 ${money(p.committed, table)}</div>
-      ${renderChipStack(p.stack)}
+      ${showStackChips ? renderChipStack(p.stack) : ""}
       <div class="betline">本輪 <strong>${money(p.bet, table)}</strong>${p.allIn ? " · All-in" : ""}</div>
       ${p.bet > 0 ? `<div class="bet-chips">${renderChipStack(p.bet, "bet")}</div>` : ""}
       <div class="cards">${p.cards.map((c) => renderCard(c, !showCards)).join("")}</div>
@@ -300,8 +298,7 @@ function renderTableFooter(table) {
       <span class="footer-pill">${infoText}</span>
       <div class="footer-mini">
         <button class="mini-btn table-action-btn" data-table-id="${table.id}" data-action="advice">建議</button>
-        <button class="mini-btn">手牌歷史</button>
-        <button class="mini-btn">戰績</button>
+        <button class="mini-btn">紀錄</button>
       </div>
     </div>
     <div class="table-footer-actions">
@@ -315,6 +312,25 @@ function renderTableFooter(table) {
       <button class="table-action-btn action-btn" data-table-id="${table.id}" data-action="allin"${heroTurn ? "" : " disabled"}>All-in</button>
       <button class="table-action-btn action-btn gold" data-table-id="${table.id}" data-action="insurance"${canOfferInsurance(table) ? "" : " disabled"}>保險</button>
       <button class="table-action-btn action-btn ghost" data-table-id="${table.id}" data-action="skip-insurance"${table.awaitingInsurance ? "" : " disabled"}>直接開牌</button>
+    </div>
+  `;
+}
+
+function renderPassiveFooter(table) {
+  const hero = table.players.find((p) => p.hero);
+  const heroTurn = table.pending && hero && table.players[table.currentIndex] === hero && !hero.folded && !hero.allIn;
+  const tone = heroTurn || table.awaitingInsurance ? " ready" : "";
+  const text = table.awaitingInsurance
+    ? "等你決定保險"
+    : heroTurn
+      ? "輪到你"
+      : table.pending
+        ? "牌局進行中"
+        : "等待下一手";
+  return `
+    <div class="table-footer-passive${tone}">
+      <span class="footer-pill">${text}</span>
+      <button class="mini-btn table-action-btn" data-table-id="${table.id}" data-action="advice">建議</button>
     </div>
   `;
 }
