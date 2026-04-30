@@ -47,14 +47,6 @@ const el = {
   analysis: $("analysis"),
   review: $("review"),
   advice: $("advice"),
-  foldBtn: $("foldBtn"),
-  checkCallBtn: $("checkCallBtn"),
-  raiseBtn: $("raiseBtn"),
-  allInBtn: $("allInBtn"),
-  insuranceBtn: $("insuranceBtn"),
-  skipInsuranceBtn: $("skipInsuranceBtn"),
-  adviceBtn: $("adviceBtn"),
-  raiseAmount: $("raiseAmount")
 };
 
 function createTable(id) {
@@ -82,7 +74,8 @@ function createTable(id) {
     insurance: null,
     awaitingInsurance: false,
     heroExtraCost: 0,
-    autoNextTimer: null
+    autoNextTimer: null,
+    raiseAmount: 60
   };
 }
 
@@ -163,6 +156,27 @@ function render() {
       render();
     });
   });
+  document.querySelectorAll(".table-action-btn").forEach((node) => {
+    node.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const table = app.tables.find((item) => item.id === Number(node.dataset.tableId));
+      if (!table) return;
+      app.activeTableId = table.id;
+      const action = node.dataset.action;
+      if (action === "advice") showAdvice(table);
+      else if (action === "insurance") buyInsurance(table);
+      else if (action === "skip-insurance") skipInsurance(table);
+      else heroAction(action, table);
+    });
+  });
+  document.querySelectorAll(".table-raise-input").forEach((node) => {
+    node.addEventListener("click", (event) => event.stopPropagation());
+    node.addEventListener("input", () => {
+      const table = app.tables.find((item) => item.id === Number(node.dataset.tableId));
+      if (!table) return;
+      table.raiseAmount = Number(node.value) || table.currentBet + table.bigBlind * 2;
+    });
+  });
   renderLobby();
   renderSidePanels();
   updateButtons();
@@ -179,23 +193,31 @@ function renderTable(table) {
     <article class="table-card${isActive ? " selected" : ""}${needsAction ? " needs-action" : ""}" data-table-id="${table.id}">
       <header class="table-head">
         <div>
-          <strong>Table ${table.id}</strong>
+          <strong>HL81${table.id}${table.handNo} · ${money(table.smallBlind, table)}/${money(table.bigBlind, table)} · 無限注德州撲克</strong>
           <span>${streetName(table.street)} · Hand ${table.handNo}</span>
         </div>
         <div class="table-stats">
-          <span>盲注 ${money(table.smallBlind, table)} / ${money(table.bigBlind, table)}</span>
+          <span>底池 ${money(table.pot, table)}</span>
           <span>Hero ${heroDelta >= 0 ? "+" : ""}${money(heroDelta, table)}</span>
         </div>
       </header>
       <div class="felt">
+        <div class="table-side left">
+          <div class="side-chip"></div>
+          <div class="side-menu"></div>
+        </div>
+        <div class="table-brand">TRAINING POKER</div>
         <div class="board-panel">
-          <div class="label">Pot ${money(table.pot, table)}</div>
+          <div class="label">底池 ${money(table.pot, table)}</div>
           ${renderPotChips(table)}
           <div class="cards board">${board}</div>
           ${table.insurance ? `<div class="insurance-pill">保險 ${money(table.insurance.premium, table)}</div>` : ""}
         </div>
         ${seats}
       </div>
+      <footer class="table-footer${needsAction ? " ready" : ""}">
+        ${renderTableFooter(table)}
+      </footer>
     </article>
   `;
 }
@@ -261,6 +283,42 @@ function chipBreakdown(amount) {
   return chips.slice(0, 14);
 }
 
+function renderTableFooter(table) {
+  const hero = table.players.find((p) => p.hero);
+  const heroTurn = table.pending && hero && table.players[table.currentIndex] === hero && !hero.folded && !hero.allIn;
+  const callAmount = hero ? Math.max(0, table.currentBet - hero.bet) : 0;
+  const raiseValue = Math.max(table.raiseAmount || 60, table.currentBet + table.lastRaise || table.bigBlind * 2);
+  const infoText = table.awaitingInsurance
+    ? "可買保險或直接開牌"
+    : heroTurn
+      ? (callAmount > 0 ? `輪到你，面對 ${money(callAmount, table)}` : "輪到你，可過牌或開火")
+      : table.pending
+        ? "等待這桌動作"
+        : "等待自動發下一手";
+  return `
+    <div class="table-footer-info">
+      <span class="footer-pill">${infoText}</span>
+      <div class="footer-mini">
+        <button class="mini-btn table-action-btn" data-table-id="${table.id}" data-action="advice">建議</button>
+        <button class="mini-btn">手牌歷史</button>
+        <button class="mini-btn">戰績</button>
+      </div>
+    </div>
+    <div class="table-footer-actions">
+      <button class="table-action-btn action-btn ghost" data-table-id="${table.id}" data-action="fold"${heroTurn ? "" : " disabled"}>棄牌</button>
+      <button class="table-action-btn action-btn" data-table-id="${table.id}" data-action="call"${heroTurn ? "" : " disabled"}>${callAmount > 0 ? `跟注 ${money(Math.min(callAmount, hero?.stack || 0), table)}` : "過牌"}</button>
+      <label class="footer-raise">
+        <span>加到</span>
+        <input class="table-raise-input" data-table-id="${table.id}" type="number" min="${table.bigBlind * 2}" step="${table.bigBlind / 2}" value="${raiseValue}"${heroTurn ? "" : " disabled"}>
+      </label>
+      <button class="table-action-btn action-btn hot" data-table-id="${table.id}" data-action="raise"${heroTurn ? "" : " disabled"}>加注</button>
+      <button class="table-action-btn action-btn" data-table-id="${table.id}" data-action="allin"${heroTurn ? "" : " disabled"}>All-in</button>
+      <button class="table-action-btn action-btn gold" data-table-id="${table.id}" data-action="insurance"${canOfferInsurance(table) ? "" : " disabled"}>保險</button>
+      <button class="table-action-btn action-btn ghost" data-table-id="${table.id}" data-action="skip-insurance"${table.awaitingInsurance ? "" : " disabled"}>直接開牌</button>
+    </div>
+  `;
+}
+
 function renderLobby() {
   el.totalHands.textContent = app.totalHands;
   el.totalProfit.textContent = money(app.totalProfit);
@@ -285,17 +343,6 @@ function updateButtons() {
   const heroTurn = table?.pending && hero && table.players[table.currentIndex] === hero && !hero.folded && !hero.allIn;
   const callAmount = hero ? Math.max(0, table.currentBet - hero.bet) : 0;
   el.newHandBtn.disabled = !table || table.pending || table.awaitingInsurance;
-  el.foldBtn.disabled = !heroTurn;
-  el.checkCallBtn.disabled = !heroTurn;
-  el.raiseBtn.disabled = !heroTurn || !hero || hero.stack <= callAmount;
-  el.allInBtn.disabled = !heroTurn || !hero || hero.stack <= 0;
-  el.raiseAmount.disabled = !heroTurn;
-  el.checkCallBtn.textContent = callAmount > 0 ? `跟注 ${money(Math.min(callAmount, hero.stack), table)}` : "過牌";
-  el.insuranceBtn.disabled = !canOfferInsurance(table);
-  el.skipInsuranceBtn.disabled = !table?.awaitingInsurance;
-  el.insuranceBtn.textContent = canOfferInsurance(table) ? `買保險 ${money(Math.ceil(table.pot * .05), table)}` : "買保險";
-  el.skipInsuranceBtn.textContent = table?.awaitingInsurance ? "不買，直接開牌" : "不買保險";
-  el.adviceBtn.disabled = !table;
   if (!table) return;
   const waitingTables = app.tables.filter(tableNeedsHeroAction).map((t) => `Table ${t.id}`);
   if (waitingTables.length > 1) {
@@ -321,9 +368,9 @@ function tableNeedsHeroAction(table) {
   return !!heroTurn || table.awaitingInsurance;
 }
 
-function showAdvice() {
-  const table = activeTable();
+function showAdvice(table = activeTable()) {
   if (!table) return;
+  app.activeTableId = table.id;
   el.advice.innerHTML = buildAdvice(table);
 }
 
@@ -811,13 +858,13 @@ function suggestHero(hero, actions, won, heroEval) {
   return "解析：整體可接受。重點是多桌時簡化決策：前位緊、後位攻、邊緣牌少投入大池。";
 }
 
-function heroAction(action) {
-  const table = activeTable();
+function heroAction(action, table = activeTable()) {
   if (!table || !table.pending || !table.players[table.currentIndex]?.hero) return;
+  app.activeTableId = table.id;
   const idx = table.currentIndex;
   if (action === "fold") fold(table, idx);
   if (action === "call") checkCall(table, idx);
-  if (action === "raise") raiseTo(table, idx, Number(el.raiseAmount.value) || table.currentBet + table.bigBlind * 2);
+  if (action === "raise") raiseTo(table, idx, Number(table.raiseAmount) || table.currentBet + table.bigBlind * 2);
   if (action === "allin") raiseTo(table, idx, table.players[idx].bet + table.players[idx].stack);
 }
 
@@ -937,12 +984,5 @@ el.allTablesBtn.addEventListener("click", startAllTables);
 el.newHandBtn.addEventListener("click", () => startHand(activeTable()));
 el.displayMode.addEventListener("change", () => { app.displayMode = el.displayMode.value; render(); });
 el.cashRate.addEventListener("change", () => { app.cashRate = Number(el.cashRate.value); render(); });
-el.foldBtn.addEventListener("click", () => heroAction("fold"));
-el.checkCallBtn.addEventListener("click", () => heroAction("call"));
-el.raiseBtn.addEventListener("click", () => heroAction("raise"));
-el.allInBtn.addEventListener("click", () => heroAction("allin"));
-el.insuranceBtn.addEventListener("click", () => buyInsurance(activeTable()));
-el.skipInsuranceBtn.addEventListener("click", () => skipInsurance(activeTable()));
-el.adviceBtn.addEventListener("click", showAdvice);
 
 addTable();
