@@ -75,7 +75,10 @@ function createTable(id) {
     awaitingInsurance: false,
     heroExtraCost: 0,
     autoNextTimer: null,
-    raiseAmount: 60
+    raiseAmount: 60,
+    heroResult: null,
+    motionEffects: [],
+    motionSeq: 0
   };
 }
 
@@ -177,6 +180,16 @@ function render() {
       table.raiseAmount = Number(node.value) || table.currentBet + table.bigBlind * 2;
     });
   });
+  document.querySelectorAll(".table-preset-btn").forEach((node) => {
+    node.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const table = app.tables.find((item) => item.id === Number(node.dataset.tableId));
+      if (!table) return;
+      const ratio = Number(node.dataset.ratio);
+      table.raiseAmount = suggestedRaiseAmount(table, ratio);
+      render();
+    });
+  });
   renderLobby();
   renderSidePanels();
   updateButtons();
@@ -204,6 +217,8 @@ function renderTable(table) {
       <div class="felt">
         ${isActive ? '<div class="table-side left"><div class="side-chip"></div><div class="side-menu"></div></div>' : ""}
         <div class="table-brand${isActive ? " active-brand" : ""}">TRAINING POKER</div>
+        ${renderMotionEffects(table)}
+        ${table.heroResult ? `<div class="hero-result-banner ${table.heroResult.type}">${table.heroResult.text}</div>` : ""}
         <div class="board-panel">
           <div class="label">底池 ${money(table.pot, table)}</div>
           ${renderPotChips(table)}
@@ -249,7 +264,7 @@ function renderSeat(table, p, idx) {
 
 function renderPotChips(table) {
   if (table.pot <= 0) return '<div class="pot-chips empty-pot">No pot</div>';
-  return `<div class="pot-chips">${renderChipStack(table.pot, "pot")}</div>`;
+  return `<div class="pot-chips${table.motionEffects.some((effect) => effect.kind === "to-winner") ? " collecting" : ""}">${renderChipStack(table.pot, "pot")}</div>`;
 }
 
 function renderChipStack(amount, variant = "stack") {
@@ -308,12 +323,61 @@ function renderTableFooter(table) {
         <span>加到</span>
         <input class="table-raise-input" data-table-id="${table.id}" type="number" min="${table.bigBlind * 2}" step="${table.bigBlind / 2}" value="${raiseValue}"${heroTurn ? "" : " disabled"}>
       </label>
+      <div class="raise-presets">
+        ${renderRaisePresets(table, heroTurn)}
+      </div>
       <button class="table-action-btn action-btn hot" data-table-id="${table.id}" data-action="raise"${heroTurn ? "" : " disabled"}>加注</button>
       <button class="table-action-btn action-btn" data-table-id="${table.id}" data-action="allin"${heroTurn ? "" : " disabled"}>All-in</button>
       <button class="table-action-btn action-btn gold" data-table-id="${table.id}" data-action="insurance"${canOfferInsurance(table) ? "" : " disabled"}>保險</button>
       <button class="table-action-btn action-btn ghost" data-table-id="${table.id}" data-action="skip-insurance"${table.awaitingInsurance ? "" : " disabled"}>直接開牌</button>
     </div>
   `;
+}
+
+function renderRaisePresets(table, heroTurn) {
+  return [
+    { label: "33%", value: .33 },
+    { label: "50%", value: .5 },
+    { label: "75%", value: .75 },
+    { label: "1x Pot", value: 1 }
+  ].map((preset) => `
+    <button class="mini-btn table-preset-btn" data-table-id="${table.id}" data-ratio="${preset.value}"${heroTurn ? "" : " disabled"}>${preset.label}</button>
+  `).join("");
+}
+
+function suggestedRaiseAmount(table, ratio) {
+  const hero = table.players.find((p) => p.hero);
+  const toCall = hero ? Math.max(0, table.currentBet - hero.bet) : 0;
+  const base = Math.max(table.currentBet + table.lastRaise, table.currentBet + Math.ceil(table.pot * ratio));
+  const cap = hero ? hero.bet + hero.stack : base;
+  return Math.min(cap, Math.max(base, table.currentBet + toCall));
+}
+
+function renderMotionEffects(table) {
+  return table.motionEffects.map((effect) => {
+    const start = motionPoint(effect.from);
+    const end = effect.kind === "to-pot" ? motionPoint("pot") : motionPoint(effect.to);
+    return `
+      <div class="chip-flight ${effect.kind}" style="--sx:${start.x}%; --sy:${start.y}%; --ex:${end.x}%; --ey:${end.y}%">
+        ${renderChipStack(effect.amount, "flight")}
+      </div>
+    `;
+  }).join("");
+}
+
+function motionPoint(point) {
+  if (point === "pot") return { x: 50, y: 54 };
+  return [
+    { x: 10, y: 38 },
+    { x: 19, y: 13 },
+    { x: 50, y: 8 },
+    { x: 81, y: 13 },
+    { x: 90, y: 38 },
+    { x: 84, y: 74 },
+    { x: 67, y: 89 },
+    { x: 33, y: 89 },
+    { x: 16, y: 74 }
+  ][point] || { x: 50, y: 54 };
 }
 
 function renderPassiveFooter(table) {
@@ -489,6 +553,8 @@ function startHand(table = activeTable()) {
   table.thinkingIndex = -1;
   table.actionToken += 1;
   table.pending = true;
+  table.heroResult = null;
+  table.motionEffects = [];
   table.insurance = null;
   table.awaitingInsurance = false;
   table.heroExtraCost = 0;
@@ -521,6 +587,7 @@ function commitChips(table, p, amount) {
   p.committed += paid;
   table.pot += paid;
   if (p.stack === 0) p.allIn = true;
+  if (paid > 0) pushMotionEffect(table, { kind: "to-pot", from: table.players.indexOf(p), amount: paid });
   return paid;
 }
 
@@ -638,6 +705,7 @@ function finishByFold(table) {
   const winner = activePlayers(table)[0];
   const hero = table.players.find((p) => p.hero);
   const startStack = hero.handStartStack ?? hero.stack + hero.committed;
+  animatePotToWinners(table, [table.players.indexOf(winner)], table.pot);
   winner.stack += table.pot;
   winner.winner = true;
   log(table, `${winner.name} 贏得 ${money(table.pot, table)}，其他人都棄牌。`);
@@ -657,6 +725,7 @@ function showdown(table) {
   const best = contenders[0].hand;
   const winners = contenders.filter((c) => compareHands(c.hand, best) === 0);
   const share = Math.floor(table.pot / winners.length);
+  animatePotToWinners(table, winners.map((w) => table.players.indexOf(w.player)), share);
   winners.forEach((w) => {
     w.player.stack += share;
     w.player.winner = true;
@@ -669,6 +738,10 @@ function showdown(table) {
 function completeHand(table, winners, wonByFold, contenders, heroStartStack) {
   const hero = table.players.find((p) => p.hero);
   const heroProfit = hero.stack - heroStartStack - table.heroExtraCost;
+  table.heroResult = {
+    type: heroProfit >= 0 ? "win" : "loss",
+    text: heroProfit >= 0 ? `+${money(heroProfit, table)}` : `${money(heroProfit, table)}`
+  };
   app.totalHands += 1;
   app.totalProfit += heroProfit;
   const result = summarizeHand(table, winners, wonByFold, contenders, heroProfit);
@@ -688,6 +761,21 @@ function scheduleNextHand(table) {
     table.autoNextTimer = null;
     if (!table.pending && !table.awaitingInsurance && table.street === "showdown") startHand(table);
   }, 1800);
+}
+
+function pushMotionEffect(table, effect) {
+  const id = `${table.id}-${table.motionSeq++}`;
+  table.motionEffects.push({ ...effect, id });
+  setTimeout(() => {
+    table.motionEffects = table.motionEffects.filter((item) => item.id !== id);
+    render();
+  }, effect.kind === "to-pot" ? 520 : 900);
+}
+
+function animatePotToWinners(table, winnerIndexes, amount) {
+  winnerIndexes.forEach((winnerIndex) => {
+    pushMotionEffect(table, { kind: "to-winner", from: "pot", to: winnerIndex, amount });
+  });
 }
 
 function continueBots(table) {
