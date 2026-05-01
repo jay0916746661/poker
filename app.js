@@ -205,12 +205,15 @@ function renderTable(table) {
   return `
     <article class="table-card${isActive ? " selected" : ""}${needsAction ? " needs-action" : ""}" data-table-id="${table.id}">
       <header class="table-head">
-        <div>
-          <strong>Table ${table.id}</strong>
-          <span>${streetName(table.street)} · Hand ${table.handNo}</span>
+        <div class="table-title-wrap">
+          <div class="window-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div>
+            <strong>Table ${table.id}</strong>
+            <span>${money(table.smallBlind, table)}/${money(table.bigBlind, table)} · ${streetName(table.street)} · Hand ${table.handNo}</span>
+          </div>
         </div>
         <div class="table-stats">
-          <span>${money(table.smallBlind, table)}/${money(table.bigBlind, table)}</span>
+          <span>底池 ${money(table.pot, table)}</span>
           <span>Hero ${heroDelta >= 0 ? "+" : ""}${money(heroDelta, table)}</span>
         </div>
       </header>

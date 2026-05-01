@@ -4,12 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>免費版德州撲克訓練室</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <main class="app">
-    <section class="topbar" aria-label="大廳狀態">
-      <div>
+    <section class="topbar lobby-bar" aria-label="大廳狀態">
+      <div class="brand-stack">
+        <span class="eyebrow">Casino Trainer Room</span>
         <h1>德州撲克訓練室</h1>
         <p>9-max 多桌 · BB / 現金顯示 · 保險決策 · 每 10 局檢討</p>
       </div>
@@ -21,7 +25,7 @@
       </div>
     </section>
 
-    <section class="toolbar" aria-label="多桌控制">
+    <section class="toolbar lobby-controls" aria-label="多桌控制">
       <button id="addTableBtn" class="primary">開新桌</button>
       <button id="allTablesBtn" class="primary">四桌同時開打</button>
       <button id="newHandBtn">目前桌發牌</button>
@@ -45,34 +49,48 @@
         <input id="autoInsurance" type="checkbox">
         <span>自動提示保險</span>
       </label>
-      <div class="hint" id="activeTableText">目前桌：Table 1</div>
-      <div class="status" id="statusText">選一桌後按「目前桌發牌」。</div>
+      <div class="table-status">
+        <div class="hint" id="activeTableText">目前桌：Table 1</div>
+        <div class="status" id="statusText">選一桌後按「目前桌發牌」。</div>
+      </div>
     </section>
 
     <section class="tables-grid" id="tablesGrid" aria-label="牌桌"></section>
 
-    <section class="workspace">
-      <section class="lower">
-        <article class="panel">
-          <h2>目前桌紀錄</h2>
-          <div class="log" id="log"></div>
+    <section class="workspace command-deck">
+      <section class="lower console-grid">
+        <article class="panel console-panel">
+          <div class="panel-top">
+            <span class="panel-kicker">Action Feed</span>
+            <h2>目前桌紀錄</h2>
+          </div>
+          <div class="log panel-body" id="log"></div>
         </article>
-        <article class="panel analysis">
-          <h2>打完解析</h2>
-          <div id="analysis">
+        <article class="panel analysis console-panel">
+          <div class="panel-top">
+            <span class="panel-kicker">Post Hand</span>
+            <h2>打完解析</h2>
+          </div>
+          <div id="analysis" class="panel-body">
             <p>完成一手後會顯示勝負、牌型、位置、彩池賠率、保險結果與下次建議。</p>
           </div>
         </article>
-        <article class="panel review">
-          <h2>每 10 局檢討</h2>
-          <div id="review">
+        <article class="panel review console-panel">
+          <div class="panel-top">
+            <span class="panel-kicker">Leak Finder</span>
+            <h2>每 10 局檢討</h2>
+          </div>
+          <div id="review" class="panel-body">
             <p>累積打滿 10 手後，這裡會整理 VPIP、PFR、勝率、損益、保險使用與策略建議。</p>
           </div>
         </article>
       </section>
-      <aside class="panel advice-panel">
-        <h2>即時建議</h2>
-        <div id="advice">
+      <aside class="panel advice-panel console-panel">
+        <div class="panel-top">
+          <span class="panel-kicker">Coach Rail</span>
+          <h2>即時建議</h2>
+        </div>
+        <div id="advice" class="panel-body">
           <p>不確定時點「建議」，我會依目前桌的手牌、位置、彩池與行動壓力給你下一步。</p>
         </div>
       </aside>
