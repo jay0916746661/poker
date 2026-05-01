@@ -200,6 +200,7 @@ function renderTable(table) {
   const needsAction = tableNeedsHeroAction(table);
   const hero = table.players.find((p) => p.hero);
   const heroDelta = hero ? hero.stack - 1500 : 0;
+  const titleCode = `HL${8180 + table.id}`;
   const board = Array.from({ length: 5 }, (_, i) => table.board[i] ? renderCard(table.board[i]) : `<div class="card back"></div>`).join("");
   const seats = table.players.map((p, idx) => renderSeat(table, p, idx)).join("");
   return `
@@ -208,8 +209,8 @@ function renderTable(table) {
         <div class="table-title-wrap">
           <div class="window-dots" aria-hidden="true"><span></span><span></span><span></span></div>
           <div>
-            <strong>Table ${table.id}</strong>
-            <span>${money(table.smallBlind, table)}/${money(table.bigBlind, table)} · ${streetName(table.street)} · Hand ${table.handNo}</span>
+            <strong>${titleCode} - ${table.smallBlind}/${table.bigBlind}/${table.bigBlind * 2} - 無限注德州撲克</strong>
+            <span>${streetName(table.street)} · Hand ${table.handNo}</span>
           </div>
         </div>
         <div class="table-stats">
@@ -222,7 +223,7 @@ function renderTable(table) {
         <div class="table-lamp table-lamp-left"></div>
         <div class="table-lamp table-lamp-right"></div>
         <div class="jackpot-plaque">大獎 ${money(300 + table.handNo * 3, table)}</div>
-        <div class="table-brand${isActive ? " active-brand" : ""}">TRAINING POKER</div>
+        <div class="table-brand${isActive ? " active-brand" : ""}">WPT TRAINER</div>
         ${renderMotionEffects(table)}
         ${table.heroResult ? `<div class="hero-result-banner ${table.heroResult.type}">${table.heroResult.text}</div>` : ""}
         <div class="board-panel">
@@ -232,10 +233,10 @@ function renderTable(table) {
           ${table.insurance ? `<div class="insurance-pill">保險 ${money(table.insurance.premium, table)}</div>` : ""}
         </div>
         ${seats}
+        <div class="table-footer table-footer-overlay${needsAction ? " ready" : ""}">
+          ${isActive ? renderTableFooter(table) : renderPassiveFooter(table)}
+        </div>
       </div>
-      <footer class="table-footer${needsAction ? " ready" : ""}">
-        ${isActive ? renderTableFooter(table) : renderPassiveFooter(table)}
-      </footer>
     </article>
   `;
 }
@@ -252,17 +253,23 @@ function renderSeat(table, p, idx) {
     p.winner ? "winner" : ""
   ].filter(Boolean).join(" ");
   const showStackChips = p.hero || idx === table.currentIndex;
+  const avatarText = p.hero ? "H" : p.name.slice(0, 1).toUpperCase();
+  const cardBacks = !showCards ? '<div class="seat-cardbacks"><span></span><span></span></div>' : "";
   return `
     <div class="${cls}">
       ${p.position === "BTN" ? '<div class="dealer-button">D</div>' : ""}
       ${p.position === "SB" || p.position === "BB" ? `<div class="blind-button">${p.position}</div>` : ""}
-      <div class="seat-head"><span class="name">${p.name}</span><span class="pos">${p.position || "--"}</span></div>
-      <div class="stackline">${money(p.stack, table)} · 投入 ${money(p.committed, table)}</div>
+      <div class="seat-avatar">${avatarText}${cardBacks}</div>
+      <div class="seat-nameplate">
+        <div class="seat-head"><span class="name">${p.name}</span></div>
+        <div class="stackline">${money(p.stack, table)}</div>
+        <div class="seat-meter"><span style="width:${Math.max(8, Math.min(100, p.stack / 15))}%"></span></div>
+      </div>
       ${showStackChips ? renderChipStack(p.stack) : ""}
-      <div class="betline">本輪 <strong>${money(p.bet, table)}</strong>${p.allIn ? " · All-in" : ""}</div>
+      <div class="betline">${p.bet > 0 ? `本輪 <strong>${money(p.bet, table)}</strong>` : `${p.style}`}${p.allIn ? " · All-in" : ""}</div>
       ${p.bet > 0 ? `<div class="bet-chips">${renderChipStack(p.bet, "bet")}${renderBetSizingBadge(table, p)}</div>` : ""}
       <div class="cards">${p.cards.map((c) => renderCard(c, !showCards)).join("")}</div>
-      <div class="tell">${p.folded ? "已棄牌" : p.lastAction || p.style}</div>
+      <div class="tell">${p.folded ? "已棄牌" : p.lastAction || p.position || p.style}</div>
       ${idx === table.thinkingIndex ? '<div class="thinking-dots"><span></span><span></span><span></span></div>' : ""}
     </div>
   `;
@@ -334,10 +341,7 @@ function renderTableFooter(table) {
   return `
     <div class="table-footer-info">
       <span class="footer-pill">${infoText}</span>
-      <div class="footer-mini">
-        <button class="mini-btn table-action-btn" data-table-id="${table.id}" data-action="advice">建議</button>
-        <button class="mini-btn">紀錄</button>
-      </div>
+      <button class="mini-btn table-action-btn footer-advice" data-table-id="${table.id}" data-action="advice">建議</button>
     </div>
     <div class="table-footer-actions">
       <button class="table-action-btn action-btn ghost" data-table-id="${table.id}" data-action="fold"${heroTurn ? "" : " disabled"}>棄牌</button>
@@ -353,6 +357,12 @@ function renderTableFooter(table) {
       <button class="table-action-btn action-btn" data-table-id="${table.id}" data-action="allin"${heroTurn ? "" : " disabled"}>All-in</button>
       <button class="table-action-btn action-btn gold" data-table-id="${table.id}" data-action="insurance"${canOfferInsurance(table) ? "" : " disabled"}>保險</button>
       <button class="table-action-btn action-btn ghost" data-table-id="${table.id}" data-action="skip-insurance"${table.awaitingInsurance ? "" : " disabled"}>直接開牌</button>
+    </div>
+    <div class="table-footer-tools footer-tools-row">
+      <button class="mini-btn">手牌歷史</button>
+      <button class="mini-btn">勝負紀錄</button>
+      <button class="mini-btn">表情符號</button>
+      <button class="mini-btn table-action-btn" data-table-id="${table.id}" data-action="advice">建議</button>
     </div>
   `;
 }
@@ -417,7 +427,11 @@ function renderPassiveFooter(table) {
   return `
     <div class="table-footer-passive${tone}">
       <span class="footer-pill">${text}</span>
-      <button class="mini-btn table-action-btn" data-table-id="${table.id}" data-action="advice">建議</button>
+      <div class="table-footer-tools footer-tools-row">
+        <button class="mini-btn">手牌歷史</button>
+        <button class="mini-btn">表情符號</button>
+        <button class="mini-btn table-action-btn" data-table-id="${table.id}" data-action="advice">建議</button>
+      </div>
     </div>
   `;
 }

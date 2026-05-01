@@ -10,63 +10,93 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main class="app">
-    <section class="topbar lobby-bar" aria-label="大廳狀態">
-      <div class="brand-stack">
+  <main class="app app-shell">
+    <section class="room-header" aria-label="大廳狀態">
+      <div class="window-dots shell-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+      <div class="header-brand">
         <span class="eyebrow">Casino Trainer Room</span>
         <h1>德州撲克訓練室</h1>
-        <p>9-max 多桌 · BB / 現金顯示 · 保險決策 · 每 10 局檢討</p>
       </div>
-      <div class="meters">
+      <div class="header-meters meters">
         <div><span>總手數</span><strong id="totalHands">0</strong></div>
         <div><span>總損益</span><strong id="totalProfit">0</strong></div>
         <div><span>桌數</span><strong id="tableCount">1 / 4</strong></div>
         <div><span>顯示</span><strong id="displayModeText">籌碼</strong></div>
       </div>
-    </section>
-
-    <section class="toolbar lobby-controls" aria-label="多桌控制">
-      <button id="addTableBtn" class="primary">開新桌</button>
-      <button id="allTablesBtn" class="primary">四桌同時開打</button>
-      <button id="newHandBtn">目前桌發牌</button>
-      <label class="select-box">
-        <span>籌碼顯示</span>
-        <select id="displayMode">
-          <option value="chips">籌碼</option>
-          <option value="bb">BB 數</option>
-          <option value="cash">現金</option>
-        </select>
-      </label>
-      <label class="select-box">
-        <span>現金匯率</span>
-        <select id="cashRate">
-          <option value="0.01">$0.01 / chip</option>
-          <option value="0.05">$0.05 / chip</option>
-          <option value="0.1">$0.10 / chip</option>
-        </select>
-      </label>
-      <label class="toggle">
-        <input id="autoInsurance" type="checkbox">
-        <span>自動提示保險</span>
-      </label>
-      <div class="table-status">
+      <div class="table-status compact-status">
         <div class="hint" id="activeTableText">目前桌：Table 1</div>
         <div class="status" id="statusText">選一桌後按「目前桌發牌」。</div>
       </div>
     </section>
 
-    <section class="tables-grid" id="tablesGrid" aria-label="牌桌"></section>
+    <section class="room-body">
+      <section class="tables-stage">
+        <div class="stage-topbar">
+          <div class="stage-pill">Cash Game Lobby</div>
+          <div class="stage-pill muted">4 Tables</div>
+          <div class="stage-pill muted">NL Hold'em</div>
+        </div>
+        <section class="tables-grid" id="tablesGrid" aria-label="牌桌"></section>
+      </section>
 
-    <section class="workspace command-deck">
-      <section class="lower console-grid">
-        <article class="panel console-panel">
+      <aside class="workspace side-console">
+        <section class="console-header">
+          <div class="console-title">
+            <span class="panel-kicker">Table Tools</span>
+            <h2>控制台</h2>
+          </div>
+          <div class="console-tabs">
+            <button class="console-tab active" type="button">桌況</button>
+            <button class="console-tab" type="button">紀錄</button>
+            <button class="console-tab" type="button">教練</button>
+          </div>
+        </section>
+
+        <section class="toolbar client-controls console-block" aria-label="多桌控制">
+          <button id="addTableBtn" class="primary">開新桌</button>
+          <button id="allTablesBtn" class="primary">四桌同時開打</button>
+          <button id="newHandBtn">目前桌發牌</button>
+          <label class="select-box">
+            <span>籌碼顯示</span>
+            <select id="displayMode">
+              <option value="chips">籌碼</option>
+              <option value="bb">BB 數</option>
+              <option value="cash">現金</option>
+            </select>
+          </label>
+          <label class="select-box">
+            <span>現金匯率</span>
+            <select id="cashRate">
+              <option value="0.01">$0.01 / chip</option>
+              <option value="0.05">$0.05 / chip</option>
+              <option value="0.1">$0.10 / chip</option>
+            </select>
+          </label>
+          <label class="toggle">
+            <input id="autoInsurance" type="checkbox">
+            <span>自動提示保險</span>
+          </label>
+        </section>
+
+        <article class="panel console-panel advice-panel console-block">
+          <div class="panel-top">
+            <span class="panel-kicker">Coach Rail</span>
+            <h2>即時建議</h2>
+          </div>
+          <div id="advice" class="panel-body">
+            <p>不確定時點「建議」，我會依目前桌的手牌、位置、彩池與行動壓力給你下一步。</p>
+          </div>
+        </article>
+
+        <article class="panel console-panel console-block">
           <div class="panel-top">
             <span class="panel-kicker">Action Feed</span>
             <h2>目前桌紀錄</h2>
           </div>
           <div class="log panel-body" id="log"></div>
         </article>
-        <article class="panel analysis console-panel">
+
+        <article class="panel analysis console-panel console-block">
           <div class="panel-top">
             <span class="panel-kicker">Post Hand</span>
             <h2>打完解析</h2>
@@ -75,7 +105,8 @@
             <p>完成一手後會顯示勝負、牌型、位置、彩池賠率、保險結果與下次建議。</p>
           </div>
         </article>
-        <article class="panel review console-panel">
+
+        <article class="panel review console-panel console-block">
           <div class="panel-top">
             <span class="panel-kicker">Leak Finder</span>
             <h2>每 10 局檢討</h2>
@@ -84,15 +115,6 @@
             <p>累積打滿 10 手後，這裡會整理 VPIP、PFR、勝率、損益、保險使用與策略建議。</p>
           </div>
         </article>
-      </section>
-      <aside class="panel advice-panel console-panel">
-        <div class="panel-top">
-          <span class="panel-kicker">Coach Rail</span>
-          <h2>即時建議</h2>
-        </div>
-        <div id="advice" class="panel-body">
-          <p>不確定時點「建議」，我會依目前桌的手牌、位置、彩池與行動壓力給你下一步。</p>
-        </div>
       </aside>
     </section>
   </main>
