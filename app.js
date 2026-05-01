@@ -254,12 +254,29 @@ function renderSeat(table, p, idx) {
       <div class="stackline">${money(p.stack, table)} · 投入 ${money(p.committed, table)}</div>
       ${showStackChips ? renderChipStack(p.stack) : ""}
       <div class="betline">本輪 <strong>${money(p.bet, table)}</strong>${p.allIn ? " · All-in" : ""}</div>
-      ${p.bet > 0 ? `<div class="bet-chips">${renderChipStack(p.bet, "bet")}</div>` : ""}
+      ${p.bet > 0 ? `<div class="bet-chips">${renderChipStack(p.bet, "bet")}${renderBetSizingBadge(table, p)}</div>` : ""}
       <div class="cards">${p.cards.map((c) => renderCard(c, !showCards)).join("")}</div>
       <div class="tell">${p.folded ? "已棄牌" : p.lastAction || p.style}</div>
       ${idx === table.thinkingIndex ? '<div class="thinking-dots"><span></span><span></span><span></span></div>' : ""}
     </div>
   `;
+}
+
+function renderBetSizingBadge(table, player) {
+  const sizing = describeBetSizing(table, player);
+  if (!sizing) return "";
+  return `<div class="bet-sizing ${sizing.tone}"><span>${sizing.percent}</span><strong>${sizing.label}</strong></div>`;
+}
+
+function describeBetSizing(table, player) {
+  if (!player.bet) return null;
+  const basePot = Math.max(table.bigBlind, table.pot - player.bet);
+  const ratio = player.bet / Math.max(1, basePot);
+  const percent = `${Math.round(ratio * 100)}% Pot`;
+  if (ratio < .5) return { percent, label: "低於半池", tone: "small" };
+  if (ratio < .85) return { percent, label: "中小尺寸", tone: "medium" };
+  if (ratio <= 1.15) return { percent, label: "接近滿池", tone: "large" };
+  return { percent, label: "高於底池", tone: "over" };
 }
 
 function renderPotChips(table) {
