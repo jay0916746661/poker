@@ -216,6 +216,9 @@ function renderTable(table) {
       </header>
       <div class="felt">
         ${isActive ? '<div class="table-side left"><div class="side-chip"></div><div class="side-menu"></div></div>' : ""}
+        <div class="table-lamp table-lamp-left"></div>
+        <div class="table-lamp table-lamp-right"></div>
+        <div class="jackpot-plaque">大獎 ${money(300 + table.handNo * 3, table)}</div>
         <div class="table-brand${isActive ? " active-brand" : ""}">TRAINING POKER</div>
         ${renderMotionEffects(table)}
         ${table.heroResult ? `<div class="hero-result-banner ${table.heroResult.type}">${table.heroResult.text}</div>` : ""}
