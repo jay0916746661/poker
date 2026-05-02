@@ -20,6 +20,7 @@ const app = {
   tables: [],
   activeTableId: 1,
   nextTableId: 1,
+  expandedTableControls: new Set(),
   displayMode: "chips",
   cashRate: .01,
   totalHands: 0,
@@ -31,6 +32,7 @@ const app = {
 const $ = (id) => document.getElementById(id);
 const el = {
   tablesGrid: $("tablesGrid"),
+  bottomDock: $("bottomDock"),
   totalHands: $("totalHands"),
   totalProfit: $("totalProfit"),
   tableCount: $("tableCount"),
@@ -152,7 +154,9 @@ function renderCard(card, hidden = false) {
 function render() {
   const urgent = app.tables.find(tableNeedsHeroAction);
   if (urgent && !tableNeedsHeroAction(activeTable())) app.activeTableId = urgent.id;
+  el.tablesGrid.className = `tables-grid${app.tables.length > 1 ? " multi-table" : " single-table"}`;
   el.tablesGrid.innerHTML = app.tables.map(renderTable).join("");
+  el.bottomDock.innerHTML = renderBottomDock(activeTable());
   document.querySelectorAll(".table-card").forEach((node) => {
     node.addEventListener("click", () => {
       app.activeTableId = Number(node.dataset.tableId);
@@ -170,6 +174,15 @@ function render() {
       else if (action === "insurance") buyInsurance(table);
       else if (action === "skip-insurance") skipInsurance(table);
       else heroAction(action, table);
+    });
+  });
+  document.querySelectorAll(".footer-toggle").forEach((node) => {
+    node.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const tableId = Number(node.dataset.tableId);
+      if (app.expandedTableControls.has(tableId)) app.expandedTableControls.delete(tableId);
+      else app.expandedTableControls.add(tableId);
+      render();
     });
   });
   document.querySelectorAll(".table-raise-input").forEach((node) => {
@@ -198,6 +211,7 @@ function render() {
 function renderTable(table) {
   const isActive = table.id === app.activeTableId;
   const needsAction = tableNeedsHeroAction(table);
+  const dense = app.tables.length > 1;
   const hero = table.players.find((p) => p.hero);
   const heroDelta = hero ? hero.stack - 1500 : 0;
   const titleCode = `HL${8180 + table.id}`;
@@ -233,11 +247,54 @@ function renderTable(table) {
           ${table.insurance ? `<div class="insurance-pill">保險 ${money(table.insurance.premium, table)}</div>` : ""}
         </div>
         ${seats}
-        <div class="table-footer table-footer-overlay${needsAction ? " ready" : ""}">
-          ${isActive ? renderTableFooter(table) : renderPassiveFooter(table)}
+        <div class="table-ribbon${needsAction ? " ready" : ""}${isActive ? " active-ribbon" : ""}">
+          <span>${table.awaitingInsurance ? "保險決策中" : needsAction ? "輪到你" : table.pending ? "牌局進行中" : "等待下一手"}</span>
+          <button class="mini-btn table-action-btn" data-table-id="${table.id}" data-action="advice">建議</button>
         </div>
       </div>
     </article>
+  `;
+}
+
+function renderBottomDock(table) {
+  if (!table) return "";
+  const hero = table.players.find((p) => p.hero);
+  const heroTurn = table.pending && hero && table.players[table.currentIndex] === hero && !hero.folded && !hero.allIn;
+  const callAmount = hero ? Math.max(0, table.currentBet - hero.bet) : 0;
+  const raiseValue = Math.max(table.raiseAmount || 60, table.currentBet + table.lastRaise || table.bigBlind * 2);
+  const infoText = table.awaitingInsurance
+    ? "可選擇保險或直接開牌"
+    : heroTurn
+      ? (callAmount > 0 ? `輪到你，面對 ${money(callAmount, table)}` : "輪到你，可過牌或下注")
+      : table.pending
+        ? "等待其他玩家行動"
+        : "可開始下一手";
+  return `
+    <div class="dock-summary">
+      <div class="dock-table-meta">
+        <strong>Table ${table.id}</strong>
+        <span>${streetName(table.street)} · 底池 ${money(table.pot, table)}</span>
+      </div>
+      <div class="dock-info-pill">${infoText}</div>
+      <div class="dock-mini-actions">
+        <button class="mini-btn table-action-btn" data-table-id="${table.id}" data-action="advice">建議</button>
+      </div>
+    </div>
+    <div class="dock-actions">
+      <button class="table-action-btn action-btn ghost" data-table-id="${table.id}" data-action="fold"${heroTurn ? "" : " disabled"}>棄牌</button>
+      <button class="table-action-btn action-btn" data-table-id="${table.id}" data-action="call"${heroTurn ? "" : " disabled"}>${callAmount > 0 ? `跟注 ${money(Math.min(callAmount, hero?.stack || 0), table)}` : "過牌"}</button>
+      <label class="dock-raise">
+        <span>加到</span>
+        <input class="table-raise-input" data-table-id="${table.id}" type="number" min="${table.bigBlind * 2}" step="${table.bigBlind / 2}" value="${raiseValue}"${heroTurn ? "" : " disabled"}>
+      </label>
+      <div class="dock-presets">
+        ${renderRaisePresets(table, heroTurn)}
+      </div>
+      <button class="table-action-btn action-btn hot" data-table-id="${table.id}" data-action="raise"${heroTurn ? "" : " disabled"}>加注</button>
+      <button class="table-action-btn action-btn" data-table-id="${table.id}" data-action="allin"${heroTurn ? "" : " disabled"}>All-in</button>
+      <button class="table-action-btn action-btn gold" data-table-id="${table.id}" data-action="insurance"${canOfferInsurance(table) ? "" : " disabled"}>保險</button>
+      <button class="table-action-btn action-btn ghost" data-table-id="${table.id}" data-action="skip-insurance"${table.awaitingInsurance ? "" : " disabled"}>直接開牌</button>
+    </div>
   `;
 }
 
@@ -326,11 +383,12 @@ function chipBreakdown(amount) {
   return chips.slice(0, 14);
 }
 
-function renderTableFooter(table) {
+function renderTableFooter(table, dense = false) {
   const hero = table.players.find((p) => p.hero);
   const heroTurn = table.pending && hero && table.players[table.currentIndex] === hero && !hero.folded && !hero.allIn;
   const callAmount = hero ? Math.max(0, table.currentBet - hero.bet) : 0;
   const raiseValue = Math.max(table.raiseAmount || 60, table.currentBet + table.lastRaise || table.bigBlind * 2);
+  const expanded = app.expandedTableControls.has(table.id);
   const infoText = table.awaitingInsurance
     ? "可買保險或直接開牌"
     : heroTurn
@@ -338,32 +396,46 @@ function renderTableFooter(table) {
       : table.pending
         ? "等待這桌動作"
         : "等待自動發下一手";
+  if (dense && !expanded) {
+    return `
+      <div class="table-footer-info">
+        <span class="footer-pill">${infoText}</span>
+        <div class="footer-mini-actions">
+          <button class="mini-btn table-action-btn footer-advice" data-table-id="${table.id}" data-action="advice">建議</button>
+          <button class="mini-btn footer-toggle" data-table-id="${table.id}">展開</button>
+        </div>
+      </div>
+    `;
+  }
   return `
     <div class="table-footer-info">
       <span class="footer-pill">${infoText}</span>
-      <button class="mini-btn table-action-btn footer-advice" data-table-id="${table.id}" data-action="advice">建議</button>
+      <div class="footer-mini-actions">
+        <button class="mini-btn table-action-btn footer-advice" data-table-id="${table.id}" data-action="advice">建議</button>
+        <button class="mini-btn footer-toggle" data-table-id="${table.id}">${expanded ? "收合" : "展開"}</button>
+      </div>
     </div>
-    <div class="table-footer-actions">
+    ${expanded ? `<div class="table-footer-actions slim-actions${dense ? " compact-actions" : ""}">
       <button class="table-action-btn action-btn ghost" data-table-id="${table.id}" data-action="fold"${heroTurn ? "" : " disabled"}>棄牌</button>
       <button class="table-action-btn action-btn" data-table-id="${table.id}" data-action="call"${heroTurn ? "" : " disabled"}>${callAmount > 0 ? `跟注 ${money(Math.min(callAmount, hero?.stack || 0), table)}` : "過牌"}</button>
-      <label class="footer-raise">
+      <label class="footer-raise slim-raise">
         <span>加到</span>
         <input class="table-raise-input" data-table-id="${table.id}" type="number" min="${table.bigBlind * 2}" step="${table.bigBlind / 2}" value="${raiseValue}"${heroTurn ? "" : " disabled"}>
       </label>
-      <div class="raise-presets">
+      <div class="raise-presets slim-presets">
         ${renderRaisePresets(table, heroTurn)}
       </div>
       <button class="table-action-btn action-btn hot" data-table-id="${table.id}" data-action="raise"${heroTurn ? "" : " disabled"}>加注</button>
       <button class="table-action-btn action-btn" data-table-id="${table.id}" data-action="allin"${heroTurn ? "" : " disabled"}>All-in</button>
       <button class="table-action-btn action-btn gold" data-table-id="${table.id}" data-action="insurance"${canOfferInsurance(table) ? "" : " disabled"}>保險</button>
       <button class="table-action-btn action-btn ghost" data-table-id="${table.id}" data-action="skip-insurance"${table.awaitingInsurance ? "" : " disabled"}>直接開牌</button>
-    </div>
-    <div class="table-footer-tools footer-tools-row">
+    </div>` : ""}
+    ${expanded && !dense ? `<div class="table-footer-tools footer-tools-row">
       <button class="mini-btn">手牌歷史</button>
       <button class="mini-btn">勝負紀錄</button>
       <button class="mini-btn">表情符號</button>
       <button class="mini-btn table-action-btn" data-table-id="${table.id}" data-action="advice">建議</button>
-    </div>
+    </div>` : ""}
   `;
 }
 
@@ -413,10 +485,11 @@ function motionPoint(point) {
   ][point] || { x: 50, y: 54 };
 }
 
-function renderPassiveFooter(table) {
+function renderPassiveFooter(table, dense = false) {
   const hero = table.players.find((p) => p.hero);
   const heroTurn = table.pending && hero && table.players[table.currentIndex] === hero && !hero.folded && !hero.allIn;
   const tone = heroTurn || table.awaitingInsurance ? " ready" : "";
+  const expanded = app.expandedTableControls.has(table.id);
   const text = table.awaitingInsurance
     ? "等你決定保險"
     : heroTurn
@@ -424,6 +497,17 @@ function renderPassiveFooter(table) {
       : table.pending
         ? "牌局進行中"
         : "等待下一手";
+  if (dense || !expanded) {
+    return `
+      <div class="table-footer-passive${tone}">
+        <span class="footer-pill">${text}</span>
+        <div class="footer-mini-actions">
+          <button class="mini-btn table-action-btn" data-table-id="${table.id}" data-action="advice">建議</button>
+          ${dense ? "" : `<button class="mini-btn footer-toggle" data-table-id="${table.id}">展開</button>`}
+        </div>
+      </div>
+    `;
+  }
   return `
     <div class="table-footer-passive${tone}">
       <span class="footer-pill">${text}</span>
@@ -431,6 +515,7 @@ function renderPassiveFooter(table) {
         <button class="mini-btn">手牌歷史</button>
         <button class="mini-btn">表情符號</button>
         <button class="mini-btn table-action-btn" data-table-id="${table.id}" data-action="advice">建議</button>
+        <button class="mini-btn footer-toggle" data-table-id="${table.id}">收合</button>
       </div>
     </div>
   `;
